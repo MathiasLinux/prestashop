@@ -10,7 +10,6 @@ Prestashop is a Python library to interact with PrestaShop's Web Service API.
 import os
 from enum import Enum
 
-
 from http.client import HTTPConnection
 from xml.etree import ElementTree
 from xml.parsers.expat import ExpatError
@@ -20,7 +19,7 @@ from requests.models import PreparedRequest
 
 from packaging import version
 
-from .exceptions import PrestaShopError,PrestaShopAuthenticationError
+from .exceptions import PrestaShopError, PrestaShopAuthenticationError
 from .utils import dict2xml
 from .utils import base64_to_tmpfile
 
@@ -114,7 +113,8 @@ class Prestashop():
     lang = None
     data_format = Format.JSON
 
-    def __init__(self,url:str, api_key:str,data_format=Format.JSON,default_lang:str=None,session:Session=None,debug:bool=False) -> None:
+    def __init__(self, url: str, api_key: str, data_format=Format.JSON, default_lang: str = None,
+                 session: Session = None, debug: bool = False) -> None:
         """ Prestashop class
 
         Args:
@@ -126,20 +126,18 @@ class Prestashop():
             session (Session, optional): requests.Session() for old sessing. Defaults to None.
             debug (bool, optional): activate debug mode. Defaults to False.
         """
-        
+
         self.url = url
         self.api_key = api_key
         self.debug = debug
         self.lang = default_lang
         self.data_format = data_format
 
-
-        # fix url 
+        # fix url
         if not self.url.endswith('/'):
             self.url += '/'
         if not self.url.endswith('/api/'):
             self.url += 'api/'
-
 
         if session is None:
             self.client = Session()
@@ -147,7 +145,7 @@ class Prestashop():
             self.client = session
 
         if not self.client.auth:
-            self.client.auth = (self.api_key , '')
+            self.client.auth = (self.api_key, '')
 
     def ping(self):
         """ Test if webservice work perfectly else raise error
@@ -168,9 +166,9 @@ class Prestashop():
             ]
         }
 
-        return self._error(response.status_code,content)
+        return self._error(response.status_code, content)
 
-    def _error(self,status_code,content):
+    def _error(self, status_code, content):
         message_by_code = {204: 'No content',
                            400: 'Bad Request',
                            401: 'Unauthorized',
@@ -202,8 +200,8 @@ class Prestashop():
                 ps_error_msg=ps_error_msg,
                 ps_error_code=ps_error_code,
             )
-        
-    def _parse_error(self,content):
+
+    def _parse_error(self, content):
         if self.data_format == Format.JSON:
             code = content['errors'][0]['code']
             msg = content['errors'][0]['message']
@@ -225,46 +223,46 @@ class Prestashop():
             code = error.find('code').text
             message = error.find('message').text
         return (code, message)
-    
-    def _prepare(self,url,params):
+
+    def _prepare(self, url, params):
         req = PreparedRequest()
-        req.prepare_url(url , params)
+        req.prepare_url(url, params)
         return req.url
 
-    def _exec(self,resource,_id=None,ids=None, method='GET',data=None,_headers=None,display=None,_filter=None,sort=None,limit=None):
+    def _exec(self, resource, _id=None, ids=None, method='GET', data=None, _headers=None, display=None, _filter=None,
+              sort=None, limit=None):
         params = {}
 
         if self.lang:
-            params.update({'language' : self.lang})
+            params.update({'language': self.lang})
 
         if self.data_format == Format.JSON:
-            params.update({'io_format' : 'JSON' , 'output_format' : 'JSON'})
-        
+            params.update({'io_format': 'JSON', 'output_format': 'JSON'})
+
         if display:
-            params.update({'display' : display})
+            params.update({'display': display})
 
         if _filter:
-            lst = _filter.split('=',1)
+            lst = _filter.split('=', 1)
             key = 'filter{}'.format(lst[0])
-            params.update({key : lst[1]})
+            params.update({key: lst[1]})
         if sort:
-            params.update({'sort' : sort})
+            params.update({'sort': sort})
         if limit:
-            params.update({'limit' : limit})
+            params.update({'limit': limit})
 
         if _id:
-            _url = '{}{}/{}'.format(self.url,resource,_id)
+            _url = '{}{}/{}'.format(self.url, resource, _id)
         else:
-            _url = '{}{}'.format(self.url,resource)
-        
-        if ids:
-            params.update({'id' : ids})
+            _url = '{}{}'.format(self.url, resource)
 
-        url = self._prepare(_url,params)
+        if ids:
+            params.update({'id': ids})
+
+        url = self._prepare(_url, params)
 
         if self.debug:
             HTTPConnection.debuglevel = 1
-
 
         if self.data_format == Format.JSON:
             headers = {'Content-Type': 'application/json'}
@@ -279,23 +277,23 @@ class Prestashop():
 
             if response.content == b'' and response.status_code == 200:
                 return True
-            self._error(response.status_code,response.json())
+            self._error(response.status_code, response.json())
             return response.json()
-        
+
         headers = {'Content-Type': 'text/xml'}
         if _headers:
             headers = _headers
         response = self.client.request(
-                method=method,
-                url=url,
-                data=data,
-                headers=headers
+            method=method,
+            url=url,
+            data=data,
+            headers=headers
         )
 
         if response.content == b'' and response.status_code == 200:
             return True
-        
-        self._error(response.status_code,response.content)
+
+        self._error(response.status_code, response.content)
         return self._parse(response.content)
 
     def _parse(self, content):
@@ -320,8 +318,8 @@ class Prestashop():
             )
 
         return parsed_content
-    
-    def search(self,resource,display='full',_filter=None,sort=None,limit=None):
+
+    def search(self, resource, display='full', _filter=None, sort=None, limit=None):
         """search from prestashop with options, for more details check the official doc \n
         https://devdocs.prestashop-project.org/1.7/webservice/tutorials/advanced-use/additional-list-parameters/
 
@@ -335,9 +333,9 @@ class Prestashop():
         Returns:
             dict : result of search
         """
-        return self._exec(resource=resource,method='GET',display=display,_filter=_filter,sort=sort,limit=limit)
+        return self._exec(resource=resource, method='GET', display=display, _filter=_filter, sort=sort, limit=limit)
 
-    def read(self,resource:str,_id:str,display:str='full') -> dict:
+    def read(self, resource: str, _id: str, display: str = 'full') -> dict:
         """get one result from prestashop with options .
         for more details check the official doc \n
         https://devdocs.prestashop-project.org/1.7/webservice/tutorials/advanced-use/additional-list-parameters/
@@ -349,12 +347,12 @@ class Prestashop():
         Returns:
             dict : result of get request
         """
-        if version.parse(self._get_version())  <= version.parse('1.7.2.4') :
+        if version.parse(self._get_version()) <= version.parse('1.7.2.4'):
             display = None
 
-        return self._exec(resource,_id,'GET',display=display)
+        return self._exec(resource, _id, 'GET', display=display)
 
-    def write(self,resource:str,data:dict):
+    def write(self, resource: str, data: dict):
         """update record from prestashop
 
         Args:
@@ -378,11 +376,39 @@ class Prestashop():
         Returns:
             dict: the updated record.
         """
-        data  = {'prestashop' : data}
+        data = {'prestashop': data}
         _data = dict2xml(data)
-        return self._exec(resource=resource,method='PUT',data=_data,display=None)
+        return self._exec(resource=resource, method='PUT', data=_data, display=None)
 
-    def unlink(self,resource:str,ids:list):
+    def writePatch(self, resource: str, data: dict):
+        """update record from prestashop using the PATCH method
+
+        Args:
+            resource (str): resource to search ( taxes,customers,products ...)
+            data (dict): data in dict format (
+                    data = {
+                        'tax':{
+                            'id': 2,
+                            'rate' : 3.000,
+                            'active': '1',
+                            'name' : {
+                                'language' : {
+                                    'attrs' : {'id' : '1'},
+                                    'value' : '3% tax'
+                                }
+                            }
+                        }
+                    }
+        )
+
+        Returns:
+            dict: the updated record.
+        """
+        data = {'prestashop': data}
+        _data = dict2xml(data)
+        return self._exec(resource=resource, method='PATCH', data=_data, display=None)
+
+    def unlink(self, resource: str, ids: list):
         """remove one or multiple records
 
         Args:
@@ -392,15 +418,15 @@ class Prestashop():
         Returns:
             boolean: result of remove (True,False)
         """
-        if isinstance(ids , (tuple,list)):
+        if isinstance(ids, (tuple, list)):
             resource_ids = ','.join([str(id) for id in ids])
             resource_ids = '[{}]'.format(resource_ids)
-            return self._exec(resource=resource ,ids=resource_ids, method='DELETE' , display=None)
-            
+            return self._exec(resource=resource, ids=resource_ids, method='DELETE', display=None)
+
         else:
-            return self._exec(resource=resource ,ids=ids, method='DELETE' , display=None)
-    
-    def create(self,resource:str,data:dict):
+            return self._exec(resource=resource, ids=ids, method='DELETE', display=None)
+
+    def create(self, resource: str, data: dict):
         """create record 
 
         Args:
@@ -424,12 +450,11 @@ class Prestashop():
             dict: record added.
         """
 
-
-        data  = {'prestashop' : data}
+        data = {'prestashop': data}
         _data = dict2xml(data)
-        return self._exec(resource=resource,data=_data,method='POST',display=None)
+        return self._exec(resource=resource, data=_data, method='POST', display=None)
 
-    def create_binary(self,resource:str, file:str,_type:str = 'image',file_name=None):
+    def create_binary(self, resource: str, file: str, _type: str = 'image', file_name=None):
         """create binary record
 
         Args:
@@ -442,25 +467,22 @@ class Prestashop():
         params = {}
 
         if self.lang:
-            params.update({'language' : self.lang})
-        
+            params.update({'language': self.lang})
+
         if self.data_format == Format.JSON:
-            params.update({'io_format' : 'JSON' , 'output_format' : 'JSON'})
-    
+            params.update({'io_format': 'JSON', 'output_format': 'JSON'})
 
-        _url = '{}{}'.format(self.url,resource)
-        url = self._prepare(_url,params)
-
+        _url = '{}{}'.format(self.url, resource)
+        url = self._prepare(_url, params)
 
         if os.path.exists(file):
 
-            _file = {_type : open(file,'rb')}
+            _file = {_type: open(file, 'rb')}
 
-        elif isinstance(file ,str):
-            _file = {_type : open(base64_to_tmpfile(file,file_name),'rb') }
+        elif isinstance(file, str):
+            _file = {_type: open(base64_to_tmpfile(file, file_name), 'rb')}
         else:
-            raise PrestaShopError('File not found',404)
-
+            raise PrestaShopError('File not found', 404)
 
         response = self.client.post(
             url=url,
@@ -471,8 +493,7 @@ class Prestashop():
             return True
         return False
 
-
-    def get_image_product(self,product_id:int,image_id:int):
+    def get_image_product(self, product_id: int, image_id: int):
         """ get product image from prestashop
 
         Args:
@@ -488,26 +509,26 @@ class Prestashop():
         params = {}
 
         if self.lang:
-            params.update({'language' : self.lang})
+            params.update({'language': self.lang})
 
         if self.data_format == Format.JSON:
-            params.update({'io_format' : 'JSON' , 'output_format' : 'JSON'})
+            params.update({'io_format': 'JSON', 'output_format': 'JSON'})
 
         _url = f'{self.url}images/products/{product_id}/{image_id}'
-        _url = self._prepare(_url,params)
-        
+        _url = self._prepare(_url, params)
+
         response = self.client.request(
             method='GET',
-            url = _url,
+            url=_url,
             headers={'Content-Type': 'application/json'}
         )
 
         if response.status_code == 200:
             return response.content
-        
-        self._error(response.status_code,response.json())
+
+        self._error(response.status_code, response.json())
         return response.json()
-    
+
     def _get_version(self):
-        re = self.search('configurations','full','[name]=[PS_INSTALL_VERSION]')
+        re = self.search('configurations', 'full', '[name]=[PS_INSTALL_VERSION]')
         return re['configurations'][0]['value']
